@@ -1,8 +1,9 @@
 # may need to pip install icalendar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from icalendar import Calendar, Event
 import requests
 import pprint
+import pytz
 pp = pprint.PrettyPrinter()
 
 request = requests.get('https://calendar.google.com/calendar/ical/m2t9ena5lcnh28dot8f515mf6s%40group.calendar.google.com/public/basic.ics')
@@ -36,6 +37,14 @@ def pretty_date_range(startdate, enddate):
         else:
             return datestring + startdate.strftime(', %-I') + enddate.strftime('-%-I%p')
     else: # different days (or midnight to midnight)
+        print 'enddate',enddate, type(enddate)
+        print 'startdate',startdate
+        if(type(startdate) == date):
+            # print 'converting startdate to datetime'
+            startdate = datetime(startdate.year, startdate.month, startdate.day)
+        if(type(enddate) == date):
+            # print 'converting enddate to datetime'
+            enddate = datetime(enddate.year, enddate.month, enddate.day)
         if startdate.hour == 0 and startdate.minute == 0 and enddate.hour == 0 and enddate.minute == 0: #whole days
             if startdate.month != enddate.month: # across months
                 datestring = startdate.strftime('%-d %B - ') + enddate.strftime('%-d %B')
@@ -50,21 +59,28 @@ def pretty_date_range(startdate, enddate):
         return datestring
 
 if __name__ == "__main__":
-    # pp(cal)
+    # sort London timezone
+    tzi = pytz.UTC
     for event in cal.walk():
     #     print event
     #     print type(event)
         if(type(event) == Event):
-            # pass
-    #         print event
             startdate = event.decoded('dtstart')
             enddate = event.decoded('dtend')
-            print event['SUMMARY']
-            print startdate
-            print enddate
-            print pretty_date_range(startdate, enddate)
-    #         print startdate.strftime('%H %M')
-            print event['DESCRIPTION']
-            print '@ ' + event['LOCATION']
-            print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
+            if type(enddate) == date:
+                enddate = datetime(enddate.year, enddate.month, enddate.day).replace(tzinfo=tzi)
+            if enddate > (datetime.now().replace(tzinfo=tzi)):
+                # print type(startdate)
+                print event['SUMMARY']
+                # print startdate, enddate
+                print pretty_date_range(startdate, enddate)
+                if event['LOCATION']:
+                    print '@ ' + event['LOCATION']
+
+                if event['DESCRIPTION'].startswith(event['SUMMARY']):
+                    print event['DESCRIPTION'][len(event['SUMMARY']):]
+                else:
+                    print event['DESCRIPTION']
+
+                print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
             
