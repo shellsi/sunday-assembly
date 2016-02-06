@@ -4,6 +4,7 @@ from icalendar import Calendar, Event
 import requests
 import pprint
 import pytz
+import cgi
 pp = pprint.PrettyPrinter()
 
 request = requests.get('https://calendar.google.com/calendar/ical/m2t9ena5lcnh28dot8f515mf6s%40group.calendar.google.com/public/basic.ics')
@@ -58,29 +59,56 @@ def pretty_date_range(startdate, enddate):
             
         return datestring
 
-if __name__ == "__main__":
+def load():
+    events = []
+    for event in cal.walk():
+        new_event = {}
+        print event
+    #     print type(event)
+        if(type(event) == Event):
+            new_event['startdate'] = event.decoded('dtstart')
+            new_event['enddate'] = event.decoded('dtend')
+            new_event['lastmod'] = event.decoded('last-modified')
+            new_event['summary'] = event['SUMMARY']
+            if event['LOCATION']:
+                new_event['location'] = event['LOCATION']
+
+            if event['DESCRIPTION'].startswith(event['SUMMARY']):
+                new_event['description'] = cgi.escape(event['DESCRIPTION'][len(event['SUMMARY']):]) + '\n'
+            else:
+                new_event['description'] = event['DESCRIPTION'] + '\n'
+            new_event['lastmod'] = event['lastmod']
+            events.append(new_event);
+    return events
+
+def output():
+    out = ""
     # sort London timezone
     tzi = pytz.UTC
     for event in cal.walk():
-    #     print event
+        print event
     #     print type(event)
         if(type(event) == Event):
             startdate = event.decoded('dtstart')
             enddate = event.decoded('dtend')
+            lastmod = event.decoded('last-modified')
             if type(enddate) == date:
                 enddate = datetime(enddate.year, enddate.month, enddate.day).replace(tzinfo=tzi)
             if enddate > (datetime.now().replace(tzinfo=tzi)):
+                out += '\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n'
+
                 # print type(startdate)
-                print event['SUMMARY']
+                out += '<strong>'+event['SUMMARY'] + '</strong>\n'
                 # print startdate, enddate
-                print pretty_date_range(startdate, enddate)
+                out += pretty_date_range(startdate, enddate) + '\n'
                 if event['LOCATION']:
-                    print '@ ' + event['LOCATION']
+                    out += '@ ' + event['LOCATION'] + '\n'
 
                 if event['DESCRIPTION'].startswith(event['SUMMARY']):
-                    print event['DESCRIPTION'][len(event['SUMMARY']):]
+                    out += cgi.escape(event['DESCRIPTION'][len(event['SUMMARY']):]) + '\n'
                 else:
-                    print event['DESCRIPTION']
+                    out += event['DESCRIPTION'] + '\n'
+                out += '<small>' + separate_pretty_datetime(lastmod) + '</small>'
 
-                print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
+    return out.replace('\n', '<br />')
             
